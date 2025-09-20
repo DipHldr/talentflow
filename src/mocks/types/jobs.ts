@@ -6,7 +6,7 @@ export interface Job {
   location?: string;      
   salary?: string;        
   status: "open" | "closed";
-  tags?: string[];        
+  tags: string[];        
   postedAt: string;
 }
 

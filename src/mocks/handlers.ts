@@ -4,7 +4,7 @@ import type {Job,PaginatedJobsResponse} from './types/jobs.ts';
 
 
 export const handlers = [
-  http.get("/api/jobs", ({request}) => {
+  http.get("/api/jobs", async({request}) => {
     const url = new URL(request.url);
 
     const search = url.searchParams.get("search") || "";
@@ -13,7 +13,7 @@ export const handlers = [
     const pageSize = parseInt(url.searchParams.get("pageSize") || "10", 10);
     const sort = (url.searchParams.get("sort") as "asc" | "desc") || "asc";
 
-    const response:PaginatedJobsResponse=getJobs({search,status,page,pageSize,sort});
+    const response:PaginatedJobsResponse=await getJobs({search,status,page,pageSize,sort});
 
     return HttpResponse.json<PaginatedJobsResponse>(response)
 

@@ -1,4 +1,5 @@
-export const candidates = [
+import type { Candidate } from "../types/candidates";
+export const candidates:Candidate[] = [
   { id: 1, name: "Deborah Cannon", email: "jamesbowers@example.net", appliedJobId: 1, stage: "applied" },
   { id: 2, name: "Gary Kim", email: "tinahunt@example.com", appliedJobId: 14, stage: "applied" },
   { id: 3, name: "Scott Parker", email: "fredmiller@example.com", appliedJobId: 6, stage: "applied" },

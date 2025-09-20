@@ -1,8 +1,9 @@
 import type { Job,PaginatedJobsResponse } from "../types/jobs.ts";
-import { jobs } from "../data/jobs.ts";
+import { db } from "../../db.ts";
 
 
-export function getJobs({
+
+export async function getJobs({
   search = "",
   status = "",
   page = 1,
@@ -14,7 +15,10 @@ export function getJobs({
   page?: number;
   pageSize?: number;
   sort?: "asc" | "desc";
-}): PaginatedJobsResponse {
+}): Promise<PaginatedJobsResponse> {
+
+  // Load jobs from IndexedDB
+  let jobs: Job[] = await db.jobs.toArray();
   const lowerSearch = search.toLowerCase();
 
   // Filter jobs
