@@ -5,6 +5,7 @@ import type { Candidate } from "./mocks/types/candidates.ts";
 // Import your mock seed data
 import { jobs } from "./mocks/data/jobs.ts";
 import { candidates } from "./mocks/data/candidates.ts";
+console.log('Candidates length: ',candidates.length)
 
 //Defining Database Class
 export class AppDB extends Dexie {
@@ -17,7 +18,11 @@ export class AppDB extends Dexie {
     // Defining schema (tables + indexes)
     this.version(1).stores({
       jobs: "++id, title, company, status, postedAt",
-      candidates: "++id, name, email, appliedJobId, stage",
+      candidates: `++id, name, email, appliedJobId, stage,
+               portfolio_headline, portfolio_summary, portfolio_skills,
+               portfolio_experience, portfolio_school, portfolio_degree,
+               portfolio_year, portfolio_github, portfolio_linkedin,
+               portfolio_website, portfolio_avatar`,
     });
 
     //Seeding DB here
@@ -34,6 +39,7 @@ export class AppDB extends Dexie {
     }
 
     if (candidatesCount === 0) {
+      
       await this.candidates.bulkAdd(candidates);
     }
   }
