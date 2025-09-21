@@ -54,3 +54,10 @@ export interface Candidate {
   portfolio_website: string;
   portfolio_avatar: string;
 }
+
+export interface PaginatedCandidatesResponse {
+  total: number;           // total number of candidates matching the filters
+  page: number;            // current page number
+  pageSize: number;        // number of items per page
+  data: Candidate[];       // array of candidates for this page
+}
