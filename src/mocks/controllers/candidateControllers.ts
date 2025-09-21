@@ -20,7 +20,12 @@ export async function getCandidates({
   if (search) {
     const s = search.toLowerCase();
     candidates = candidates.filter(
-      (c) => c.name.toLowerCase().includes(s) || c.email.toLowerCase().includes(s)
+      (c) => c.name.toLowerCase().includes(s) ||
+       c.email.toLowerCase().includes(s) || 
+       c.portfolio_skills.some(skill => skill.toLowerCase().includes(s))||
+       c.portfolio_school.toLowerCase().includes(s)||
+       c.portfolio_degree.toLowerCase().includes(s)||
+       c.portfolio_summary.toLowerCase().includes(s)
     );
   }
 
@@ -42,3 +47,4 @@ export async function getCandidates({
     data: paginated,
   };
 }
+

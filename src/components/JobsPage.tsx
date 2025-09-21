@@ -51,7 +51,7 @@ const JobsPage = () => {
     const [pageSize,setPageSize]=useState(10);
     const debouncedSearchTerm=useDebounce(searchTerm,500);
     const [isCreateJobOpen, setIsCreateJobOpen] = useState(false);
-      const [filters, setFilters] = useState<JobFilters>({
+    const [filters, setFilters] = useState<JobFilters>({
     type: [],
     experience: [],
     location: '',
@@ -59,7 +59,7 @@ const JobsPage = () => {
     salaryMax: 200000,
     department: []
   });
-    const { data, isLoading, isError, error } = useQuery<PaginatedJobsResponse, Error>({
+  const { data, isLoading, isError, error } = useQuery<PaginatedJobsResponse, Error>({
     queryKey: ['jobs', debouncedSearchTerm,pageNumber,pageSize,filters], // This key re-fetches when debouncedSearchTerm changes
     queryFn: () => fetchJobs(debouncedSearchTerm,String(pageNumber),String(pageSize),filters),
   });
