@@ -53,7 +53,7 @@ const CandidateProfileCard = ({
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-gray-900 text-lg truncate group-hover:text-blue-600 transition-colors">
-              <Link to={`/candidate/${id}`}>{name}</Link>
+              <Link to={`/candidate/profile/${id}`}>{name}</Link>
             </h3>
           </div>
         </div>

@@ -2,7 +2,7 @@ import React from 'react';
 import { MapPin, Mail, Phone, Calendar, Star, School, GraduationCap, Github, GitBranch } from 'lucide-react';
 // import type { Candidate } from '../../../mocks/types/candidates.ts';
 // import type { Candidate } from '../CandidatesProfile/mockType.ts';
-import type {Candidate} from '../../mocks/types/candidates';
+import type {Candidate} from '../../../mocks/types/candidates';
 interface ProfileHeaderProps {
   candidates: Candidate;
 }

@@ -11,6 +11,14 @@ import type {
 import type {CandidateIdentifier} from '../types/candidates.ts';
 
 
+export const getCandidateById = async (id: number) => {
+  const candidate = await db.candidates.get(id);
+  if (!candidate) {
+    throw new Error("Candidate not found");
+  }
+  return candidate;
+};
+
 // For HR to create/save an assessment for a job
 export const createAssessment = async (request: AssessmentRequest): Promise<CreatedAssesment> => {
   const { jobId,title, topics, numberOfQuestions } = request;

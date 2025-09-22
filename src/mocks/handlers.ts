@@ -7,7 +7,8 @@ import {
   createAssessment,
   submitAssessment,
   getAssignedAssessments,
-  getAssessmentSummary } from "./controllers/assesmentControllers";
+  getAssessmentSummary,
+  getCandidateById } from "./controllers/assesmentControllers";
 import type {
    AssessmentRequest,
    CreatedAssesment,
@@ -119,5 +120,15 @@ export const handlers = [
     return HttpResponse.json(summary);
   }),
 
+  // ... inside the handlers array
+http.get("/api/candidates/:candidateId", async ({ params }) => {
+  const { candidateId } = params;
+  try {
+    const candidate = await getCandidateById(Number(candidateId));
+    return HttpResponse.json(candidate);
+  } catch (error: any) {
+    return HttpResponse.json({ message: error.message }, { status: 404 });
+  }
+}),
 
 ];
