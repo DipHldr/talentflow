@@ -3,7 +3,20 @@ import {getJobs} from './controllers/jobControllers.ts';
 import type {Job,PaginatedJobsResponse} from './types/jobs.ts';
 import { getCandidates } from "./controllers/candidateControllers.ts";
 
+import { 
+  createAssessment,
+  submitAssessment,
+  getAssignedAssessments,
+  getAssessmentSummary } from "./controllers/assesmentControllers";
+import type {
+   AssessmentRequest,
+   CreatedAssesment,
+   AssessmentSubmission } from "./types/assesment";
+
+
+
 export const handlers = [
+  //Handler for fetching jobs
   http.get("/api/jobs", async({request}) => {
     const url = new URL(request.url);
 
@@ -18,6 +31,7 @@ export const handlers = [
     return HttpResponse.json<PaginatedJobsResponse>(response)
 
   }),
+  //Handler for fetching candidates
     http.get("/api/candidates", async ({ request }) => {
     const url = new URL(request.url);
 
@@ -30,6 +44,80 @@ export const handlers = [
 
     return HttpResponse.json(response);
   }),
+  // Handler for creating an assessment
+  http.post("/api/assessments/create", async ({ request }) => {
+    try {
+      // Getting the request body (title, topics, etc.)
+      const assessmentRequest = await request.json() as AssessmentRequest;
 
-  
+      // Callaing the  actual database logic from the controller
+      const newAssessment = await createAssessment(assessmentRequest);
+
+      // Returning newly created assessment with a 201 status
+      return HttpResponse.json<CreatedAssesment>(newAssessment, { status: 201 });
+
+    } catch (error: any) {
+      // If createAssessment throws an error (e.g., not enough questions), return a 400 error
+      return HttpResponse.json({ message: error.message }, { status: 400 });
+    }
+  }),
+   // Handler for a candidate to submit their answers
+  http.post("/api/assessments/submit", async ({ request }) => {
+    try {
+      const submission = await request.json() as AssessmentSubmission;
+      const result = await submitAssessment(submission);
+      return HttpResponse.json(result, { status: 200 });
+    } catch (error: any) {
+      return HttpResponse.json({ message: "Failed to submit assessment." }, { status: 500 });
+    }
+  }),
+
+  // Handler for a candidate to see their assigned assessments
+  http.get("/api/assessments/assigned", async ({ request }) => {
+
+    try {
+      const url = new URL(request.url);
+    const email = url.searchParams.get("email");
+    const candidateIdParam = url.searchParams.get("candidateId");
+
+    if (!email && !candidateIdParam) {
+      return HttpResponse.json(
+        { message: "Either candidateId or email must be provided." },
+        { status: 400 }
+      );
+    }
+
+    const identifier = {
+      email: email ?? undefined,
+      candidateId: candidateIdParam ? parseInt(candidateIdParam, 10) : undefined,
+    };
+
+    if(!identifier.email && !identifier.candidateId)throw Error('no identifier');
+
+    const assessments = await getAssignedAssessments(identifier);
+    return HttpResponse.json(assessments,{status:200});
+      
+    } catch (error) {
+      if(error  instanceof Error){
+        return HttpResponse.json({message:error.message},{status:401});
+      }else{
+        console.log(error);
+      }
+    }
+    
+  }),
+
+  // Handler for HR to see an assessment's analytics summary
+  http.get("/api/assessments/:jobId/summary", async ({ params }) => {
+    const { jobId } = params;
+
+    if (!jobId) {
+      return HttpResponse.json({ message: "Job ID is required." }, { status: 400 });
+    }
+
+    const summary = await getAssessmentSummary(Number(jobId));
+    return HttpResponse.json(summary);
+  }),
+
+
 ];

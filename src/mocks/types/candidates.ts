@@ -61,3 +61,8 @@ export interface PaginatedCandidatesResponse {
   pageSize: number;        // number of items per page
   data: Candidate[];       // array of candidates for this page
 }
+
+export interface CandidateIdentifier {
+  candidateId?: number;
+  email?: string;
+}
