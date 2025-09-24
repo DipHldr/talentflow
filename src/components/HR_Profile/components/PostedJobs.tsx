@@ -42,6 +42,41 @@ const fetchJobs = async (page: number, searchTerm: string = '', filters: Partial
   return response.json();
 };
 
+export const deleteJobAPI = async (jobId: string): Promise<{ success: boolean; id: string }> => {
+  const response = await fetch(`/api/jobs/${jobId}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    // If the server returns an error (like 404 Not Found),
+    // try to parse the error message from the response body.
+    const errorData = await response.json().catch(() => ({})); // Handle cases where body isn't JSON
+    throw new Error(errorData.message || 'Failed to delete the job.');
+  }
+
+  // If successful, return the JSON response from the server.
+  return response.json();
+};
+
+export const updateJobAPI = async (jobId: string, updatedData: Partial<Job>): Promise<Job> => {
+  const response = await fetch(`/api/jobs/${jobId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(updatedData),
+  });
+
+  if (!response.ok) {
+    // If the server returns an error (like 404 Not Found),
+    // parse the error message from the response body.
+    const errorData = await response.json().catch(() => ({})); // Handle cases where body isn't JSON
+    throw new Error(errorData.message || 'Failed to update the job.');
+  }
+
+  // If successful, return the full updated job object from the server.
+  return response.json();
+};
 
 export const PostedJobs: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -55,6 +90,11 @@ export const PostedJobs: React.FC = () => {
 
   const [filters, setFilters] = useState<Partial<JobFilters>>({});
   const [showFilters, setShowFilters] = useState(false);
+
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [editJob, setEditJob] = useState<Job | null>(null);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -77,7 +117,6 @@ export const PostedJobs: React.FC = () => {
     department: 'Engineering',
   });
 
-// ✅ ADD THESE TWO useEffect BLOCKS ✅
 
 // This is the main effect for fetching data from the API
 useEffect(() => {
@@ -222,6 +261,106 @@ useEffect(() => {
     alert('Error creating job. Please check the console and try again.');
   }
 };
+
+
+  const handleEditJob = (job: Job) => {
+    setSelectedJob(job);
+    setEditJob({ ...job });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateJob = async () => {
+    if (!editJob || !selectedJob) return;
+
+    try {
+      // Call the API to update the job
+      await updateJobAPI(selectedJob.id, editJob);
+      
+      // Update the local state
+      setJobs(prevJobs => 
+        prevJobs.map(job => 
+          job.id === selectedJob.id ? editJob : job
+        )
+      );
+      
+      // Close modal and reset state
+      setShowEditModal(false);
+      setSelectedJob(null);
+      setEditJob(null);
+      
+      // Optionally refresh the data from the server
+      loadJobs();
+      
+    } catch (err) {
+      console.error("Failed to update job:", err);
+      alert('Error updating job. Please try again.');
+    }
+  };
+
+  const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    if (!editJob) return;
+    
+    const { name, value } = e.target;
+    
+    if (name === 'salaryMin' || name === 'salaryMax') {
+      setEditJob({
+        ...editJob,
+        salary: {
+          ...editJob.salary,
+          [name === 'salaryMin' ? 'min' : 'max']: parseInt(value, 10)
+        }
+      });
+    } else if (name === 'currency') {
+      setEditJob({
+        ...editJob,
+        salary: {
+          ...editJob.salary,
+          currency: value
+        }
+      });
+    } else if (name === 'requirements' || name === 'benefits') {
+      setEditJob({
+        ...editJob,
+        [name]: value.split(',').map(item => item.trim()).filter(Boolean)
+      });
+    } else {
+      setEditJob({
+        ...editJob,
+        [name]: value
+      });
+    }
+  };
+
+
+  const handleDeleteJob = (job: Job) => {
+    setSelectedJob(job);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteJob = async () => {
+    if (!selectedJob) return;
+
+    try {
+      // Call the API to delete the job
+      await deleteJobAPI(selectedJob.id);
+      
+      // Update the local state
+      setJobs(prevJobs => prevJobs.filter(job => job.id !== selectedJob.id));
+      
+      // Close modal and reset state
+      setShowDeleteModal(false);
+      setSelectedJob(null);
+      
+      // Optionally refresh the data from the server
+      loadJobs();
+      
+    } catch (err) {
+      console.error("Failed to delete job:", err);
+      alert('Error deleting job. Please try again.');
+    }
+  };
+
+
 const getColorForDeadline = (deadline: string): string => {
   if (!deadline) {
     return 'bg-gray-100 text-gray-800';
@@ -288,11 +427,15 @@ const getColorForDeadline = (deadline: string): string => {
             </div>
             
             <div className="flex space-x-2 mt-auto">
-              <button className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1">
+              <button 
+              onClick={() => handleEditJob(job)} 
+              className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1">
                 <Edit3 className="w-4 h-4" />
                 <span>Edit</span>
               </button>
-              <button className="flex-1 bg-red-50 hover:bg-red-100 text-red-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1">
+              <button 
+              onClick={() => handleDeleteJob(job)} 
+              className="flex-1 bg-red-50 hover:bg-red-100 text-red-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center space-x-1">
                 <Trash2 className="w-4 h-4" />
                 <span>Delete</span>
               </button>
@@ -563,6 +706,161 @@ const getColorForDeadline = (deadline: string): string => {
                 className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-medium transition-colors duration-200"
               >
                 Create Job
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Edit Job Modal */}
+      {showEditModal && editJob && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold mb-4">Edit Job</h3>
+            <div className="space-y-4">
+              <input 
+                name="title" 
+                value={editJob.title} 
+                onChange={handleEditInputChange} 
+                placeholder="Job Title" 
+                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+              />
+              <input 
+                name="location" 
+                value={editJob.location} 
+                onChange={handleEditInputChange} 
+                placeholder="Location" 
+                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <input 
+                  name="salaryMin" 
+                  type="number" 
+                  value={editJob.salary.min} 
+                  onChange={handleEditInputChange} 
+                  placeholder="Min Salary" 
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                />
+                <input 
+                  name="salaryMax" 
+                  type="number" 
+                  value={editJob.salary.max} 
+                  onChange={handleEditInputChange} 
+                  placeholder="Max Salary" 
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                />
+              </div>
+              <input 
+                name="currency" 
+                value={editJob.salary.currency} 
+                onChange={handleEditInputChange} 
+                placeholder="Currency (e.g., USD, EUR)" 
+                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+              />
+              <select 
+                name="type" 
+                value={editJob.type} 
+                onChange={handleEditInputChange} 
+                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="full-time">Full-time</option>
+                <option value="part-time">Part-time</option>
+                <option value="contract">Contract</option>
+                <option value="remote">Remote</option>
+              </select>
+              <select 
+                name="experience" 
+                value={editJob.experience} 
+                onChange={handleEditInputChange} 
+                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="entry">Entry Level</option>
+                <option value="mid">Mid Level</option>
+                <option value="senior">Senior Level</option>
+              </select>
+              <input 
+                name="department" 
+                value={editJob.department} 
+                onChange={handleEditInputChange} 
+                placeholder="Department" 
+                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+              />
+              <textarea 
+                name="description" 
+                value={editJob.description} 
+                onChange={handleEditInputChange} 
+                placeholder="Job Description" 
+                rows={3}
+                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+              />
+              <textarea 
+                name="requirements" 
+                value={Array.isArray(editJob.requirements) ? editJob.requirements.join(', ') : editJob.requirements} 
+                onChange={handleEditInputChange} 
+                placeholder="Requirements (comma-separated)" 
+                rows={2}
+                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+              />
+              <textarea 
+                name="benefits" 
+                value={Array.isArray(editJob.benefits) ? editJob.benefits.join(', ') : editJob.benefits} 
+                onChange={handleEditInputChange} 
+                placeholder="Benefits (comma-separated)" 
+                rows={2}
+                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+              />
+              <input 
+                name="deadline" 
+                type="date" 
+                value={editJob.deadline} 
+                onChange={handleEditInputChange} 
+                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+              />
+            </div>
+            <div className="flex space-x-3 mt-6">
+              <button 
+                onClick={() => {
+                  setShowEditModal(false);
+                  setSelectedJob(null);
+                  setEditJob(null);
+                }} 
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded-lg font-medium transition-colors duration-200"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleUpdateJob} 
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-medium transition-colors duration-200"
+              >
+                Update Job
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && selectedJob && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4 text-red-600">Delete Job</h3>
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete the job "{selectedJob.title}"? This action cannot be undone.
+            </p>
+            <div className="flex space-x-3">
+              <button 
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setSelectedJob(null);
+                }} 
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded-lg font-medium transition-colors duration-200"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDeleteJob} 
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg font-medium transition-colors duration-200"
+              >
+                Delete Job
               </button>
             </div>
           </div>

@@ -2,13 +2,14 @@ import Dexie, { type Table } from "dexie";
 import type { Job } from "./mocks/types/jobs1.ts";
 import type { Candidate } from "./mocks/types/candidates.ts";
 import type { TestQuestion } from "./mocks/types/assesment.ts";
-import type { AssessmentResult, CreatedAssesment } from "./mocks/types/assesment.ts";
+import type { AssessmentResult, CreatedAssesment,AssignedAssessment } from "./mocks/types/assesment.ts";
 
 // Import your mock seed data
 import { jobsData } from "./mocks/data/jobsData.ts"; // Assuming you renamed the exported data
 import { candidates } from "./mocks/data/candidates.ts";
 import { questionPool } from "./mocks/data/assesments.ts";
-
+import { demoAssessments } from "./mocks/data/demoAssesmentData.ts";
+import {moreMockAssessmentResults} from "./mocks/data/results.ts";
 //Defining Database Class
 export class AppDB extends Dexie {
   // MODIFIED: The second generic argument is the type of the primary key.
@@ -17,6 +18,7 @@ export class AppDB extends Dexie {
   questions!: Table<TestQuestion, string>;
   createdAssessments!: Table<CreatedAssesment, number>;
   assessmentResults!: Table<AssessmentResult, number>;
+  assignedAssessments!: Table<AssignedAssessment, [number, number]>;
 
   constructor() {
     super("TalentflowDB");
@@ -30,12 +32,13 @@ export class AppDB extends Dexie {
       candidates: `++id, name, email, appliedJobId, stage`,
 
       // Index on category for filtering questions
-      questions: "id, &category",
+      questions: "id, category",
 
-      createdAssessments: "jobId", // 'jobId' is the unique primary key
+      createdAssessments: "++id, title", // 'id' is the unique primary key
 
       // Compound index for efficient lookups
-      assessmentResults: "++id, [jobId+candidateId]",
+      assessmentResults: "++id, [candidateId+assessmentId]",
+      assignedAssessments: "[candidateId+assessmentId]",
     });
 
     //Seeding DB here
@@ -45,10 +48,13 @@ export class AppDB extends Dexie {
   // Seeding Data if DB empty
   async seedData() {
     // Using Promise.all for more efficient parallel checks
-    const [jobsCount, candidatesCount, questionsCount] = await Promise.all([
+    const [jobsCount, candidatesCount, questionsCount,createdAssessmentsCount, 
+      resultsCount] = await Promise.all([
       this.jobs.count(),
       this.candidates.count(),
-      this.questions.count()
+      this.questions.count(),
+      this.createdAssessments.count(),
+      this.assessmentResults.count()
     ]);
 
     if (jobsCount === 0) {
@@ -65,6 +71,17 @@ export class AppDB extends Dexie {
     if (questionsCount === 0) {
       console.log('Seeding assessment question pool...');
       await this.questions.bulkAdd(questionPool);
+    }
+
+
+    if (createdAssessmentsCount === 0) {
+      console.log('Seeding created assessments...');
+      await this.createdAssessments.bulkPut(demoAssessments);
+    }
+
+    if (resultsCount === 0) {
+      console.log('Seeding assessment results...');
+      await this.assessmentResults.bulkPut(moreMockAssessmentResults);
     }
   }
 }

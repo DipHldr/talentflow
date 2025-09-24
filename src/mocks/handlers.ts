@@ -1,5 +1,5 @@
 import { http, HttpResponse } from "msw";
-import {getJobs,createJob,deleteJob,editJob} from './controllers/jobControllers.ts';
+import {getJobs,createJob,deleteJob,editJob,} from './controllers/jobControllers.ts';
 import type {Job,PaginatedJobsResponse} from './types/jobs1.ts';
 import { getCandidates } from "./controllers/candidateControllers.ts";
 
@@ -8,7 +8,13 @@ import {
   submitAssessment,
   getAssignedAssessments,
   getAssessmentSummary,
-  getCandidateById } from "./controllers/assesmentControllers";
+  getCandidateById,
+  assignAssessment,
+  getAllAssessments,
+  getOverallAssessmentStats,
+  deleteAssessment,
+  editAssessment,
+  getCandidateResults } from "./controllers/assesmentControllers";
 import type {
    AssessmentRequest,
    CreatedAssesment,
@@ -32,7 +38,7 @@ export const handlers = [
 
   }),
   //Handler for fetching candidates
-    http.get("/api/candidates", async ({ request }) => {
+  http.get("/api/candidates", async ({ request }) => {
     const url = new URL(request.url);
 
     const search = url.searchParams.get("search") || "";
@@ -42,6 +48,13 @@ export const handlers = [
 
     const response = await getCandidates({ search, stage, page, pageSize });
 
+    return HttpResponse.json(response);
+  }),
+    http.get("/api/assessments", async ({ request }) => {
+    const url = new URL(request.url);
+    const page = parseInt(url.searchParams.get("page") || "1", 10);
+    const search = url.searchParams.get("search") || "";
+    const response = await getAllAssessments({ page, search });
     return HttpResponse.json(response);
   }),
   // Handler for creating an assessment
@@ -76,7 +89,7 @@ export const handlers = [
   http.get("/api/assessments/assigned", async ({ request }) => {
 
     try {
-      const url = new URL(request.url);
+    const url = new URL(request.url);
     const email = url.searchParams.get("email");
     const candidateIdParam = url.searchParams.get("candidateId");
 
@@ -107,18 +120,77 @@ export const handlers = [
     
   }),
 
-  // Handler for HR to see an assessment's analytics summary
-  http.get("/api/assessments/:jobId/summary", async ({ params }) => {
-    const { jobId } = params;
-
-    if (!jobId) {
-      return HttpResponse.json({ message: "Job ID is required." }, { status: 400 });
+  http.post("/api/assessments/assign", async ({ request }) => {
+    try {
+      const { candidateId, assessmentId } = await request.json() as { candidateId: number, assessmentId: number };
+      const assignment = await assignAssessment({ candidateId, assessmentId });
+      return HttpResponse.json(assignment, { status: 201 });
+    } catch (error: any) {
+      if (error.name === 'ConstraintError' || error.message.includes('already assigned')) {
+        return HttpResponse.json({ message: 'This assessment is already assigned.' }, { status: 409 });
+      }
+      return HttpResponse.json({ message: error.message }, { status: 404 });
     }
-
-    const summary = await getAssessmentSummary(Number(jobId));
-    return HttpResponse.json(summary);
   }),
 
+    // GET /api/assessments/:assessmentId/summary - Get analytics for an assessment
+  http.get("/api/assessments/:assessmentId/summary", async ({ params }) => {
+    const { assessmentId } = params;
+    try {
+      const summary = await getAssessmentSummary(Number(assessmentId));
+      return HttpResponse.json(summary);
+    } catch (error: any) {
+      return HttpResponse.json({ message: error.message }, { status: 404 });
+    }
+  }),
+
+  http.get("/api/candidates/:candidateId/results", async ({ params }) => {
+    const { candidateId } = params;
+    
+    if (!candidateId) {
+      return HttpResponse.json({ message: "Candidate ID is required." }, { status: 400 });
+    }
+
+    try {
+      const results = await getCandidateResults(Number(candidateId));
+      return HttpResponse.json(results);
+    } catch (error: any) {
+      // This will catch any unexpected errors from the controller
+      return HttpResponse.json({ message: "Failed to fetch candidate results." }, { status: 500 });
+    }
+  }),
+
+    // Handler for fetching overall assessment statistics
+  http.get("/api/assessments/stats", async () => {
+    try {
+      const stats = await getOverallAssessmentStats();
+      return HttpResponse.json(stats);
+    } catch (error: any) {
+      return HttpResponse.json({ message: "Failed to fetch assessment stats." }, { status: 500 });
+    }
+  }),
+
+  http.put("/api/assessments/:assessmentId", async ({ params, request }) => {
+    const { assessmentId } = params;
+    try {
+      const updatedData = await request.json() as Partial<CreatedAssesment>;
+      const result = await editAssessment(Number(assessmentId), updatedData);
+      return HttpResponse.json(result);
+    } catch (error: any) {
+      return HttpResponse.json({ message: error.message }, { status: 404 });
+    }
+  }),
+
+  // Handler for deleting an assessment
+  http.delete("/api/assessments/:assessmentId", async ({ params }) => {
+    const { assessmentId } = params;
+    try {
+      const result = await deleteAssessment(Number(assessmentId));
+      return HttpResponse.json(result);
+    } catch (error: any) {
+      return HttpResponse.json({ message: error.message }, { status: 404 });
+    }
+  }),
   // ... inside the handlers array
 http.get("/api/candidates/:candidateId", async ({ params }) => {
   const { candidateId } = params;

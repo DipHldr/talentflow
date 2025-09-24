@@ -1,73 +1,184 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import { Search, Mail, UserPlus, Send, Filter } from 'lucide-react';
+import type { Candidate,PaginatedCandidatesResponse } from '../../../mocks/types/candidates';
+import type { PaginatedAssessmentsResponse, CreatedAssesment } from '../../../mocks/types/assesment';
+import { Link } from 'react-router-dom';
 
-interface Candidate {
-  id: string;
-  name: string;
-  email: string;
-  position: string;
-  status: 'pending' | 'assigned' | 'completed';
-  score?: number;
-  assignedAssessments: string[];
-}
+// export interface Candidate {
+//   id: number;
+//   name: string;
+//   email: string;
+//   appliedJobId: number;
+//   stage: string;
+
+//   // Portfolio fields
+//   portfolio_headline: string;
+//   portfolio_summary: string;
+//   portfolio_skills: string[];
+//   portfolio_experience: number; // you can use number of years or count of experience items
+//   portfolio_school: string;
+//   portfolio_degree: string;
+//   portfolio_year: number;
+//   portfolio_github: string;
+//   portfolio_linkedin: string;
+//   portfolio_website: string;
+//   portfolio_avatar: string;
+// }
+
+
+export const fetchCandidatesAPI = async (page: number, search: string): Promise<PaginatedCandidatesResponse> => {
+  const params = new URLSearchParams({ page: String(page), search });
+  const response = await fetch(`/api/candidates?${params.toString()}`);
+  if (!response.ok) throw new Error('Failed to fetch candidates.');
+  return response.json();
+};
+
+export const fetchAllAssessmentsAPI = async (): Promise<PaginatedAssessmentsResponse> => {
+  // Fetch all assessments for the dropdown, assuming the API supports a large page size
+  const response = await fetch(`/api/assessments?pageSize=100`);
+  if (!response.ok) throw new Error('Failed to fetch assessments.');
+  return response.json();
+};
+
+export const assignAssessmentAPI = async (candidateId: number, assessmentId: number) => {
+  const response = await fetch('/api/assessments/assign', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ candidateId, assessmentId }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to assign assessment.');
+  }
+  return response.json();
+};
+
+
 
 export const CandidatesTab: React.FC = () => {
   const [searchEmail, setSearchEmail] = useState('');
   const [selectedAssessment, setSelectedAssessment] = useState('');
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
 
-  const [candidates] = useState<Candidate[]>([
-    {
-      id: '1',
-      name: 'John Smith',
-      email: 'john.smith@email.com',
-      position: 'Frontend Developer',
-      status: 'completed',
-      score: 85,
-      assignedAssessments: ['Frontend Developer Assessment'],
-    },
-    {
-      id: '2',
-      name: 'Sarah Johnson',
-      email: 'sarah.j@email.com',
-      position: 'Backend Developer',
-      status: 'assigned',
-      assignedAssessments: ['Backend Developer Assessment'],
-    },
-    {
-      id: '3',
-      name: 'Mike Wilson',
-      email: 'mike.wilson@email.com',
-      position: 'Data Analyst',
-      status: 'pending',
-      assignedAssessments: [],
-    },
-  ]);
+  const [suggestions, setSuggestions] = useState<Candidate[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
-  const assessments = [
-    'Frontend Developer Assessment',
-    'Backend Developer Assessment',
-    'Data Analyst Assessment',
-  ];
 
-  const handleAssignAssessment = () => {
-    if (searchEmail && selectedAssessment) {
-      // In a real app, this would send an email invitation
-      console.log(`Assigning ${selectedAssessment} to ${searchEmail}`);
-      setShowAssignModal(false);
-      setSearchEmail('');
-      setSelectedAssessment('');
+   // Data and loading state
+  const [assessments, setAssessments] = useState<CreatedAssesment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Search and pagination state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  // Modal and assignment state
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate|null>(null);
+  const [selectedAssessmentId, setSelectedAssessmentId] = useState<string>('');
+
+ useEffect(() => {
+    const loadCandidates = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetchCandidatesAPI(currentPage, debouncedSearchTerm);
+        setCandidates(response.data);
+        setTotalPages(response.page);
+      } catch (err) {
+        setError('Could not load candidates.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadCandidates();
+  }, [currentPage, debouncedSearchTerm]);
+
+  // Fetch all assessment templates once for the dropdown
+  useEffect(() => {
+    const loadAssessments = async () => {
+      try {
+        const response = await fetchAllAssessmentsAPI();
+        setAssessments(response.data);
+      } catch (err) {
+        console.error("Failed to load assessments for dropdown.");
+      }
+    };
+    loadAssessments();
+  }, []);
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+      setCurrentPage(1);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  useEffect(() => {
+  // Don't search if the input is empty
+  if (searchEmail.trim() === '') {
+    setSuggestions([]);
+    return;
+  }
+
+  const fetchSuggestions = async () => {
+    setIsSearching(true);
+    try {
+      // Use your existing API helper to fetch candidates matching the search term
+      const response = await fetchCandidatesAPI(1, searchEmail);
+      setSuggestions(response.data);
+    } catch (err) {
+      console.error("Failed to fetch suggestions");
+      setSuggestions([]); // Clear suggestions on error
+    } finally {
+      setIsSearching(false);
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'bg-green-100 text-green-800';
-      case 'assigned': return 'bg-blue-100 text-blue-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
+  // Debounce the API call
+  const timer = setTimeout(() => {
+    fetchSuggestions();
+  }, 300); // Wait 300ms after user stops typing
+
+  return () => clearTimeout(timer); // Cleanup
+}, [searchEmail]);
+
+  const openAssignModal = (candidate: Candidate) => {
+    setSelectedCandidate(candidate);
+    setShowAssignModal(true);
+  };
+  
+  const handleAssignAssessment = async () => {
+    console.log('handle Assign Assesment Called');
+    console.log(`selected candidate: ${selectedCandidate},selected assesmentid: ${selectedAssessmentId}`)
+    if (selectedCandidate && selectedAssessmentId) {
+      try {
+        await assignAssessmentAPI(selectedCandidate.id, parseInt(selectedAssessmentId));
+        alert(`Successfully assigned assessment to ${selectedCandidate.name}`);
+        setShowAssignModal(false);
+        setSelectedCandidate(null);
+        setSelectedAssessmentId('');
+      } catch (error: any) {
+        alert(`Error: ${error.message}`);
+      }
     }
   };
+
+  const getStageColor = (stage: string) => {
+    const colors: { [key: string]: string } = {
+      'Applied': 'bg-blue-100 text-blue-800',
+      'Screening': 'bg-yellow-100 text-yellow-800',
+      'Interview': 'bg-indigo-100 text-indigo-800',
+      'Offer': 'bg-purple-100 text-purple-800',
+      'Hired': 'bg-green-100 text-green-800',
+    };
+    return colors[stage] || 'bg-gray-100 text-gray-800';
+  };
+
 
   const filteredCandidates = candidates.filter(candidate =>
     candidate.email.toLowerCase().includes(searchEmail.toLowerCase()) ||
@@ -95,8 +206,8 @@ export const CandidatesTab: React.FC = () => {
             <input
               type="text"
               placeholder="Search candidates by name or email..."
-              value={searchEmail}
-              onChange={(e) => setSearchEmail(e.target.value)}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
@@ -110,53 +221,53 @@ export const CandidatesTab: React.FC = () => {
       {/* Candidates List */}
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Candidate</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredCandidates.map((candidate) => (
-                <tr key={candidate.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div>
-                      <div className="font-medium text-gray-900">{candidate.name}</div>
-                      <div className="text-sm text-gray-500">{candidate.email}</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {candidate.position}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(candidate.status)}`}>
-                      {candidate.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {candidate.score ? `${candidate.score}%` : '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {candidate.assignedAssessments.length > 0 
-                      ? candidate.assignedAssessments.join(', ')
-                      : 'None'
-                    }
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button className="text-blue-600 hover:text-blue-900 mr-4">View</button>
-                    <button className="text-blue-600 hover:text-blue-900">Assign</button>
-                  </td>
+          {isLoading ? (
+            <div className="text-center p-8">Loading candidates...</div>
+          ) : error ? (
+            <div className="text-center p-8 text-red-500">{error}</div>
+          ) : (
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Candidate</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Headline</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stage</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {candidates.map((candidate) => (
+                  <tr key={candidate.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="font-medium text-gray-900"><Link to={`/candidate/profile/${candidate.id}`}>{candidate.name}</Link></div>
+                        <div className="text-sm text-gray-500">{candidate.email}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900 truncate max-w-xs">{candidate.portfolio_headline}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStageColor(candidate.stage)}`}>{candidate.stage}</span>
+                    </td>
+                    <td className="px-6 py-4 text-sm font-medium">
+                      <button className="text-blue-600 hover:text-blue-900 mr-4">View</button>
+                      <button onClick={() => openAssignModal(candidate)} className="text-blue-600 hover:text-blue-900">Assign</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && !isLoading && (
+        <div className="flex justify-center items-center space-x-4">
+          <button onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage <= 1}>Previous</button>
+          <span>Page {currentPage} of {totalPages}</span>
+          <button onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage >= totalPages}>Next</button>
+        </div>
+      )}
 
       {/* Assign Assessment Modal */}
       {showAssignModal && (
@@ -176,20 +287,47 @@ export const CandidatesTab: React.FC = () => {
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="candidate@email.com"
                   />
+
+                  {/* Show suggestions dropdown if there are any */}
+                {suggestions.length > 0 && (
+                  <ul className="absolute z-10 w-full bg-white border border-gray-300 rounded-lg mt-1 max-h-48 overflow-y-auto shadow-lg">
+                    {isSearching ? (
+                      <li className="px-4 py-2 text-gray-500">Searching...</li>
+                    ) : (
+                      suggestions.map(candidate => (
+                        <li
+                          key={candidate.id}
+                          onClick={() => {
+                            // When a suggestion is clicked:
+                            setSearchEmail(candidate.email); // Fill the input with the selected email
+                            setSelectedCandidate(candidate); // IMPORTANT: Set the whole candidate object
+                            setSuggestions([]); // Hide the suggestions
+                          }}
+                          className="px-4 py-2 hover:bg-blue-50 cursor-pointer"
+                        >
+                          <div className="font-medium text-gray-900">{candidate.name}</div>
+                          <div className="text-sm text-gray-500">{candidate.email}</div>
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                )}
+
                 </div>
               </div>
               
+              {/* Select From Assesment List */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Select Assessment</label>
                 <select
-                  value={selectedAssessment}
-                  onChange={(e) => setSelectedAssessment(e.target.value)}
+                  value={selectedAssessmentId}
+                  onChange={(e) => setSelectedAssessmentId(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">Choose an assessment...</option>
                   {assessments.map((assessment) => (
-                    <option key={assessment} value={assessment}>
-                      {assessment}
+                    <option key={assessment.id} value={assessment.id}>
+                      {assessment.title}
                     </option>
                   ))}
                 </select>
@@ -205,6 +343,7 @@ export const CandidatesTab: React.FC = () => {
               </button>
               <button
                 onClick={handleAssignAssessment}
+                disabled={!selectedCandidate || !selectedAssessmentId}
                 className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-2"
               >
                 <Send className="w-4 h-4" />
