@@ -1,39 +1,41 @@
 import Dexie, { type Table } from "dexie";
-import type { Job } from "./mocks/types/jobs.ts";
+import type { Job } from "./mocks/types/jobs1.ts";
 import type { Candidate } from "./mocks/types/candidates.ts";
-import type { TestQuestion } from "./mocks/types/assesment.ts"; // Adjust path if needed
-import type {AssessmentResult,CreatedAssesment} from "./mocks/types/assesment.ts";
+import type { TestQuestion } from "./mocks/types/assesment.ts";
+import type { AssessmentResult, CreatedAssesment } from "./mocks/types/assesment.ts";
 
 // Import your mock seed data
-import { jobs } from "./mocks/data/jobs.ts";
+import { jobsData } from "./mocks/data/jobsData.ts"; // Assuming you renamed the exported data
 import { candidates } from "./mocks/data/candidates.ts";
-import { questionPool } from "./mocks/data/assesments.ts"; // Adjust path if needed
-console.log('Candidates length: ',candidates.length)
+import { questionPool } from "./mocks/data/assesments.ts";
 
 //Defining Database Class
 export class AppDB extends Dexie {
-  jobs!: Table<Job, number>;
+  // MODIFIED: The second generic argument is the type of the primary key.
+  jobs!: Table<Job, string>;
   candidates!: Table<Candidate, number>;
   questions!: Table<TestQuestion, string>;
-  createdAssessments!: Table<CreatedAssesment, number>;   
-  assessmentResults!: Table<AssessmentResult, number>; 
+  createdAssessments!: Table<CreatedAssesment, number>;
+  assessmentResults!: Table<AssessmentResult, number>;
 
   constructor() {
     super("TalentflowDB");
 
     // Defining schema (tables + indexes)
     this.version(1).stores({
-      jobs: "++id, title, company, status, postedAt",
-      candidates: `++id, name, email, appliedJobId, stage,
-               portfolio_headline, portfolio_summary, portfolio_skills,
-               portfolio_experience, portfolio_school, portfolio_degree,
-               portfolio_year, portfolio_github, portfolio_linkedin,
-               portfolio_website, portfolio_avatar`,
-      questions: "id, category",
-       // Define schema for the new tables
-      createdAssessments: "jobId", // 'jobId' is the unique primary key
-      assessmentResults: "++id, jobId, candidateId", // Auto-incrementing key, with indexes on jobId and candidateId
+      // MODIFIED: 'id' is now the string primary key. Added indexes for searching and sorting.
+      jobs: "id, title, company, postedDate",
 
+      // Using a non-unique index on email for mock data flexibility
+      candidates: `++id, name, email, appliedJobId, stage`,
+
+      // Index on category for filtering questions
+      questions: "id, &category",
+
+      createdAssessments: "jobId", // 'jobId' is the unique primary key
+
+      // Compound index for efficient lookups
+      assessmentResults: "++id, [jobId+candidateId]",
     });
 
     //Seeding DB here
@@ -42,12 +44,17 @@ export class AppDB extends Dexie {
 
   // Seeding Data if DB empty
   async seedData() {
-    const jobsCount = await this.jobs.count();
-    const candidatesCount = await this.candidates.count();
+    // Using Promise.all for more efficient parallel checks
+    const [jobsCount, candidatesCount, questionsCount] = await Promise.all([
+      this.jobs.count(),
+      this.candidates.count(),
+      this.questions.count()
+    ]);
 
     if (jobsCount === 0) {
       console.log('Seeding jobs pool...');
-      await this.jobs.bulkAdd(jobs);
+      // Using the larger jobsData export
+      await this.jobs.bulkAdd(jobsData);
     }
 
     if (candidatesCount === 0) {
@@ -55,10 +62,9 @@ export class AppDB extends Dexie {
       await this.candidates.bulkAdd(candidates);
     }
 
-    const questionsCount = await this.questions.count();
     if (questionsCount === 0) {
-        console.log('Seeding assessment question pool...');
-        await this.questions.bulkAdd(questionPool);
+      console.log('Seeding assessment question pool...');
+      await this.questions.bulkAdd(questionPool);
     }
   }
 }

@@ -64,10 +64,12 @@ export function Hero() {
                 <ArrowRight className="h-5 w-5 ml-2" />
               </Link>
             </Button>
+            <Link to='hrprofile'>
             <Button size="lg" variant="outline" className="border-slate-300 text-slate-700 hover:bg-slate-50 px-8 rounded-xl">
               <Users className="h-5 w-5 mr-2" />
               For Employers
             </Button>
+            </Link>
           </div>
 
           {/* Stats */}

@@ -5,7 +5,7 @@ import { AssessmentsTab } from './components/AssessmentsTab';
 import { CandidatesTab } from './components/CandidatesTab';
 import { AnalyticsTab } from './components/AnalyticsTab';
 import { ResultsTab } from './components/ResultsTab';
-
+import { PostedJobs } from './components/PostedJobs';
 const HRProfilePage=()=> {
   const [activeTab, setActiveTab] = useState('assessments');
 
@@ -20,6 +20,8 @@ const HRProfilePage=()=> {
 
   const renderTabContent = () => {
     switch (activeTab) {
+      case 'jobs':
+        return <PostedJobs/>
       case 'assessments':
         return <AssessmentsTab />;
       case 'candidates':

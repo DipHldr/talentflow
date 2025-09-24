@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, Users, BarChart3, Trophy } from 'lucide-react';
+import { FileText, Users, BarChart3, Trophy,BriefcaseBusiness } from 'lucide-react';
 
 interface TabNavigationProps {
   activeTab: string;
@@ -8,6 +8,7 @@ interface TabNavigationProps {
 
 export const TabNavigation: React.FC<TabNavigationProps> = ({ activeTab, onTabChange }) => {
   const tabs = [
+    { id: 'jobs', label: 'Jobs Posted', icon: BriefcaseBusiness },
     { id: 'assessments', label: 'Created Assessments', icon: FileText },
     { id: 'candidates', label: 'Manage Candidates', icon: Users },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },

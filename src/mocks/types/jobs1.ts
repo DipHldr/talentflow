@@ -39,15 +39,15 @@ export interface PaginatedJobsResponse {
 export interface CreateJobData {
   title: string;
   company: string;
-  location: string;
-  type: 'full-time' | 'part-time' | 'contract' | 'remote';
+  location?: string;
+  type?: 'full-time' | 'part-time' | 'contract' | 'remote';
   experience: 'entry' | 'mid' | 'senior' | 'lead';
   salaryMin: number;
   salaryMax: number;
   currency: string;
-  description: string;
-  requirements: string[];
-  benefits: string[];
-  deadline: string;
-  department: string;
+  description?: string;
+  requirements?: string;
+  benefits?: string;
+  deadline?: string;
+  department?: string;
 }

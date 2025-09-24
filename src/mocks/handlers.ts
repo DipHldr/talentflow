@@ -1,6 +1,6 @@
 import { http, HttpResponse } from "msw";
-import {getJobs} from './controllers/jobControllers.ts';
-import type {Job,PaginatedJobsResponse} from './types/jobs.ts';
+import {getJobs,createJob,deleteJob,editJob} from './controllers/jobControllers.ts';
+import type {Job,PaginatedJobsResponse} from './types/jobs1.ts';
 import { getCandidates } from "./controllers/candidateControllers.ts";
 
 import { 
@@ -22,14 +22,13 @@ export const handlers = [
     const url = new URL(request.url);
 
     const search = url.searchParams.get("search") || "";
-    const status = url.searchParams.get("status") || "";
     const page = parseInt(url.searchParams.get("page") || "1", 10);
     const pageSize = parseInt(url.searchParams.get("pageSize") || "10", 10);
     const sort = (url.searchParams.get("sort") as "asc" | "desc") || "asc";
 
-    const response:PaginatedJobsResponse=await getJobs({search,status,page,pageSize,sort});
+    const response:PaginatedJobsResponse=await getJobs({search,page,pageSize,sort});
 
-    return HttpResponse.json<PaginatedJobsResponse>(response)
+    return HttpResponse.json<PaginatedJobsResponse>(response);
 
   }),
   //Handler for fetching candidates
@@ -130,5 +129,44 @@ http.get("/api/candidates/:candidateId", async ({ params }) => {
     return HttpResponse.json({ message: error.message }, { status: 404 });
   }
 }),
+
+  http.post("/api/jobs", async ({ request }) => {
+    try {
+      // 1. Get the form data from the request body
+      const jobData = await request.json() as Job;
+
+      // 2. Call the controller to handle the database logic
+      const newJob = await createJob(jobData);
+
+      // 3. Return the newly created job with a 201 status
+      return HttpResponse.json(newJob, { status: 201 });
+
+    } catch (error: any) {
+      console.error("Failed to create job:", error);
+      return HttpResponse.json({ message: "Failed to create job on the server." }, { status: 500 });
+    }
+  }),
+
+  http.put("/api/jobs/:jobId", async ({ params, request }) => {
+    const { jobId } = params;
+    try {
+      const updatedData = await request.json() as Partial<Job>;
+      const updatedJob = await editJob(String(jobId), updatedData);
+      return HttpResponse.json(updatedJob, { status: 200 });
+    } catch (error: any) {
+      return HttpResponse.json({ message: error.message }, { status: 404 }); // 404 if not found
+    }
+  }),
+
+  // Handler for deleting a job
+  http.delete("/api/jobs/:jobId", async ({ params }) => {
+    const { jobId } = params;
+    try {
+      const result = await deleteJob(String(jobId));
+      return HttpResponse.json(result, { status: 200 });
+    } catch (error: any) {
+      return HttpResponse.json({ message: error.message }, { status: 404 }); // 404 if not found
+    }
+  }),
 
 ];
