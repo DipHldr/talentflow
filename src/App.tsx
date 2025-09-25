@@ -1,7 +1,6 @@
 // import TestDB from './components/TestDb.tsx';
 import { BrowserRouter, Routes, Route } from "react-router";
 import LandingPage from './components/LandingPage.tsx';
-import Playground from "./components/PlayGround/Playground.tsx";
 import CandidateProfile from "./components/CandidateProfile.tsx";
 import CandidatePage from "./components/Candidates/CandidatePage.tsx";
 import CandidateProfilePage from './components/CandidatesProfile/CandidateProfilePage.tsx';
@@ -13,7 +12,6 @@ function App() {
     <BrowserRouter>
     <Routes>
       <Route path="/" element={<LandingPage />} />
-      <Route path="playground" element={<Playground />} />
       <Route path="profile" element={<CandidateProfile />} />
       <Route path="kanban" element={<CandidatePage />} />
       <Route path="/candidate/profile/:candidateId" element={<CandidateProfilePage />} />

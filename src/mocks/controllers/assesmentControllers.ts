@@ -6,7 +6,6 @@ import type {
     AssessmentRequest,
     AssessmentSubmission,
     TestQuestion,
-    AssessmentSummary,
     PaginatedAssessmentsResponse,
     OverallAssessmentStats } from '../types/assesment.ts';
 

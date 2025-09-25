@@ -1,6 +1,6 @@
 // import type { Job,PaginatedJobsResponse } from "../types/jobs.ts";
 import { db } from "../../db.ts";
-import type { Job, CreateJobData,PaginatedJobsResponse,JobFilters } from '../types/jobs1';
+import type { Job,PaginatedJobsResponse,JobFilters } from '../types/jobs1';
 
 
 

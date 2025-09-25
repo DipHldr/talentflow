@@ -5,12 +5,12 @@ import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Select } from '../ui/select';
 import { Button } from '../ui/button';
-import type { CreateJobData } from '../../mocks/types/jobs1';
+import type { CreateJobData,Job } from '../../mocks/types/jobs1';
 
 interface CreateJobModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (jobData: CreateJobData) => void;
+  onSubmit: (jobData: Job) => void;
 }
 
 const CreateJobModal: React.FC<CreateJobModalProps> = ({
@@ -18,20 +18,23 @@ const CreateJobModal: React.FC<CreateJobModalProps> = ({
   onClose,
   onSubmit
 }) => {
-  const [formData, setFormData] = useState<CreateJobData>({
+  const [formData, setFormData] = useState<Omit<Job,'id'>>({
     title: '',
     company: '',
     location: '',
     type: 'full-time',
     experience: 'mid',
-    salaryMin: 0,
-    salaryMax: 0,
-    currency: 'USD',
-    description: '',
+    salary:{
+      min:0,
+      max:0,
+      currency:'USD'
+    },
+    description:'',
     requirements: [''],
     benefits: [''],
     deadline: '',
-    department: ''
+    department: '',
+    postedDate: new Date().toISOString()
   });
 
   const [errors, setErrors] = useState<Partial<CreateJobData>>({});
@@ -41,11 +44,11 @@ const CreateJobModal: React.FC<CreateJobModalProps> = ({
 
     if (!formData.title.trim()) newErrors.title = 'Job title is required';
     if (!formData.company.trim()) newErrors.company = 'Company name is required';
-    if (!formData.location.trim()) newErrors.location = 'Location is required';
-    if (!formData.description.trim()) newErrors.description = 'Job description is required';
-    if (!formData.department.trim()) newErrors.department = 'Department is required';
+    if (!formData.location!.trim()) newErrors.location = 'Location is required';
+    if (!formData.description!.trim()) newErrors.description = 'Job description is required';
+    if (!formData.department!.trim()) newErrors.department = 'Department is required';
     if (!formData.deadline) newErrors.deadline = 'Application deadline is required';
-    if (formData.salaryMin >= formData.salaryMax) {
+    if (formData.salary.min >= formData.salary.max) {
       newErrors.salaryMin = 0;
       alert('Minimum salary must be less than maximum salary');
     }
@@ -61,11 +64,11 @@ const CreateJobModal: React.FC<CreateJobModalProps> = ({
       // Filter out empty requirements and benefits
       const cleanedData = {
         ...formData,
-        requirements: formData.requirements.filter(req => req.trim()),
-        benefits: formData.benefits.filter(benefit => benefit.trim())
+        requirements: formData.requirements!.filter(req => req.trim()),
+        benefits: formData.benefits!.filter(benefit => benefit.trim())
       };
       
-      onSubmit(cleanedData);
+      // onSubmit(cleanedData);
       
       // Reset form
       setFormData({
@@ -74,14 +77,17 @@ const CreateJobModal: React.FC<CreateJobModalProps> = ({
         location: '',
         type: 'full-time',
         experience: 'mid',
-        salaryMin: 0,
-        salaryMax: 0,
-        currency: 'USD',
+        salary:{
+          min:0,
+          max:0,
+          currency:'USD'
+        },
         description: '',
         requirements: [''],
         benefits: [''],
         deadline: '',
-        department: ''
+        department: '',
+        postedDate: new Date().toISOString() 
       });
       setErrors({});
       onClose();
@@ -218,23 +224,46 @@ const CreateJobModal: React.FC<CreateJobModalProps> = ({
               <Input
                 type="number"
                 placeholder="Minimum"
-                value={formData.salaryMin || ''}
-                onChange={(e) => setFormData({ ...formData, salaryMin: parseInt(e.target.value) || 0 })}
-                className={errors.salaryMin ? 'border-red-500' : ''}
+                value={formData.salary.min || ''}
+                onChange={(e) => {
+                  const newMin = parseInt(e.target.value) || 0;
+                  setFormData({
+                    ...formData,
+                    salary: {
+                      ...formData.salary,
+                      min: newMin,
+                      // If the new minimum is greater than the current max,
+                      // update the max to match the new minimum.
+                      max: newMin > formData.salary.max ? newMin : formData.salary.max,
+                    },
+                  });
+                }}
               />
             </div>
             <div>
               <Input
-                type="number"
+                type="number" // Changed to "number" for better user experience
                 placeholder="Maximum"
-                value={formData.salaryMax || ''}
-                onChange={(e) => setFormData({ ...formData, salaryMax: parseInt(e.target.value) || 0 })}
+                value={formData.salary.max || ''}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    salary: {
+                      ...formData.salary,
+                      max: parseInt(e.target.value) || 0,
+                    },
+                  })
+                }
               />
             </div>
             <div>
               <select
-                value={formData.currency}
-                onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                value={formData.salary.currency}
+                onChange={(e) => setFormData({ ...formData, salary:{
+                  ...formData.salary,
+                  currency: e.target.value ||'USD',
+                }})
+              }
               >
                 <option value="USD">USD</option>
                 <option value="EUR">EUR</option>
@@ -281,14 +310,14 @@ const CreateJobModal: React.FC<CreateJobModalProps> = ({
             Requirements
           </label>
           <div className="space-y-2">
-            {formData.requirements.map((req, index) => (
+            {formData.requirements!.map((req:any, index:number) => (
               <div key={index} className="flex items-center space-x-2">
                 <Input
                   value={req}
                   onChange={(e) => handleArrayInputChange('requirements', index, e.target.value)}
                   placeholder="e.g. 5+ years of React experience"
                 />
-                {formData.requirements.length > 1 && (
+                {formData.requirements!.length > 1 && (
                   <Button
                     type="button"
                     variant="ghost"
@@ -319,14 +348,14 @@ const CreateJobModal: React.FC<CreateJobModalProps> = ({
             Benefits
           </label>
           <div className="space-y-2">
-            {formData.benefits.map((benefit, index) => (
+            {formData.benefits!.map((benefit:string, index:number) => (
               <div key={index} className="flex items-center space-x-2">
                 <Input
                   value={benefit}
                   onChange={(e) => handleArrayInputChange('benefits', index, e.target.value)}
                   placeholder="e.g. Health Insurance"
                 />
-                {formData.benefits.length > 1 && (
+                {formData.benefits!.length > 1 && (
                   <Button
                     type="button"
                     variant="ghost"
