@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, Clock, CheckCircle, AlertCircle, XCircle, Play, Award, Calendar, Target, BookOpen, Timer } from 'lucide-react';
+import { FileText, Clock,Play,Target, BookOpen, Timer } from 'lucide-react';
 import type { CreatedAssesment } from '../../../mocks/types/assesment.ts';
 
 interface AssessmentsTabProps {

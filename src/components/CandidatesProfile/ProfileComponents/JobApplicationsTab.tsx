@@ -30,9 +30,9 @@ const JobApplicationsTab: React.FC<JobApplicationsTabProps> = ({ applications })
   // const [jobs,setjobs]=useState<Job[]>([]);
     const [enrichedApplications, setEnrichedApplications] = useState<EnrichedApplication[]>([]);
   // State to manage the loading UI
-    const [isLoading, setIsLoading] = useState<boolean>(true);
+    // const [isLoading, setIsLoading] = useState<boolean>(true);
   // State to handle any potential errors
-    const [error, setError] = useState<string | null>(null);
+    // const [error, setError] = useState<string | null>(null);
 
 
     useEffect(() => {
@@ -40,12 +40,12 @@ const JobApplicationsTab: React.FC<JobApplicationsTabProps> = ({ applications })
     const enrichApplicationData = async () => {
       // Don't do anything if there are no applications
       if (!applications || applications.length === 0) {
-        setIsLoading(false);
+        // setIsLoading(false);
         return;
       }
 
-      setIsLoading(true);
-      setError(null);
+      // setIsLoading(true);
+      // setError(null);
 
       try {
         // Create an array of promises, one for each job detail fetch
@@ -64,10 +64,10 @@ const JobApplicationsTab: React.FC<JobApplicationsTabProps> = ({ applications })
         // setjobs(jobDetails)
       } catch (err: any) {
         console.error("Failed to enrich job application data:", err);
-        setError("Could not load job application details. Please try again later.");
-      } finally {
-        setIsLoading(false);
+        // setError("Could not load job application details. Please try again later.");
       }
+        // setIsLoading(false);
+      
     };
 
     enrichApplicationData();
@@ -77,17 +77,17 @@ const JobApplicationsTab: React.FC<JobApplicationsTabProps> = ({ applications })
 
 
 
-  const getStatusColor = (status: string) => {
-    const colors = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      reviewing: 'bg-blue-100 text-blue-800',
-      shortlisted: 'bg-green-100 text-green-800',
-      rejected: 'bg-red-100 text-red-800',
-      interview: 'bg-purple-100 text-purple-800',
-      offered: 'bg-emerald-100 text-emerald-800'
-    };
-    return colors[status as keyof typeof colors] || colors.pending;
-  };
+  // const getStatusColor = (status: string) => {
+  //   const colors = {
+  //     pending: 'bg-yellow-100 text-yellow-800',
+  //     reviewing: 'bg-blue-100 text-blue-800',
+  //     shortlisted: 'bg-green-100 text-green-800',
+  //     rejected: 'bg-red-100 text-red-800',
+  //     interview: 'bg-purple-100 text-purple-800',
+  //     offered: 'bg-emerald-100 text-emerald-800'
+  //   };
+  //   return colors[status as keyof typeof colors] || colors.pending;
+  // };
 
   return (
     <div className="space-y-4">
@@ -114,8 +114,8 @@ const JobApplicationsTab: React.FC<JobApplicationsTabProps> = ({ applications })
                       <span className="text-sm">{job.jobDetails.company}</span>
                     </div>
                   </div>
-                  {/* <span className={`px-3 py-1 rounded-full text-sm font-medium capitalize ${getStatusColor(application.status)}`}>
-                    {application.status}
+                  {/* <span className={`px-3 py-1 rounded-full text-sm font-medium capitalize ${getStatusColor(job.status)}`}>
+                    {job.status}
                   </span> */}
                 </div>
 

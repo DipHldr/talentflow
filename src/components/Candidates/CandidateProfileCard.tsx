@@ -1,4 +1,3 @@
-import React from 'react'
 import { Mail, GraduationCap, Briefcase, User ,Trash2} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type {Candidate} from '../../mocks/types/candidates.ts';
@@ -12,19 +11,9 @@ const CandidateProfileCard = ({
   id,
   name,
   email,
-  appliedJobId,
-  stage,
-  portfolio_headline,
-portfolio_summary,
 portfolio_skills,
 portfolio_experience,
-portfolio_school,
 portfolio_degree,
-portfolio_year,
-portfolio_github,
-portfolio_linkedin,
-portfolio_website,
-portfolio_avatar,
 onDelete
 }:CandidateProfileCardProps) => {
 

@@ -10,15 +10,15 @@ interface OverallAssessmentStats {
   overallAverageScore: number;
 }
 
-interface AssessmentSummary {
-  assessmentId: number;
-  title: string;
-  attemptsCount: number;
-  averageScore: number;
-  passingRate?: number;
-  highestScore?: number;
-  lowestScore?: number;
-}
+// interface AssessmentSummary {
+//   assessmentId: number;
+//   title: string;
+//   attemptsCount: number;
+//   averageScore: number;
+//   passingRate?: number;
+//   highestScore?: number;
+//   lowestScore?: number;
+// }
 
 interface StatCardProps {
   icon: React.ReactNode;

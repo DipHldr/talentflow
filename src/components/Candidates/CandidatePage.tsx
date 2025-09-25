@@ -22,7 +22,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { PaginatedCandidatesResponse, Candidate } from '../../mocks/types/candidates';
-import { ArrowBigLeft,ArrowLeft } from 'lucide-react';
+import {ArrowLeft } from 'lucide-react';
 
 
 const updateCandidateStageAPI = async (candidateId: number, newStage: string) => {
@@ -176,7 +176,7 @@ const useDebounce = (value: string, delay: number) => {
 const CandidatePage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [pageNumber, setPageNumber] = useState(1);
-  const [pageSize, setPageSize] = useState(10); // Fetch a larger batch of candidates
+  const [pageSize, setPageSize] = useState(15); // Fetch a larger batch of candidates
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
     const queryClient = useQueryClient();

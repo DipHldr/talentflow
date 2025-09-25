@@ -1,4 +1,3 @@
-import React from 'react'
 import { Header } from './LandingPageComponents/Header'
 import { Hero } from './LandingPageComponents/Hero'
 import { Features } from './LandingPageComponents/Features'
