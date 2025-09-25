@@ -1,42 +1,127 @@
 import  { useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Briefcase, FileText, Clock } from 'lucide-react';
-import type { Candidate } from '../../mocks/types/candidates.ts';
+import type { Candidate, } from '../../mocks/types/candidates.ts';
 import ProfileHeader from './ProfileComponents/ProfileHeader';
 import JobApplicationsTab from './ProfileComponents/JobApplicationsTab';
 import AssessmentsTab from './ProfileComponents/AssesmentsTab';
 import TimelineTab from './ProfileComponents/TimelineTab';
-import { mockJobApplications, mockAssessments, mockTimelineEvents } from './mockData.ts';
+// import { mockJobApplications, mockAssessments, mockTimelineEvents } from './mockData.ts';
+import type {JobApplication} from '../../mocks/types/jobs1.ts';
+import type { AssessmentResult,CreatedAssesment } from '../../mocks/types/assesment.ts';
+import type { TimelineEvent } from '@/mocks/types/timeline.ts';
+
+export type EnrichedAssessmentResult = AssessmentResult & {
+  assessmentTitle: string;
+};
+
+export const fetchCandidateApplicationsAPI = async (candidateId: number): Promise<JobApplication[]> => {
+  const response = await fetch(`/api/candidates/${candidateId}/applications`);
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Could not fetch applications.');
+  }
+
+  return response.json();
+};
+
+
+
 
 type TabType = 'jobs' | 'assessments' | 'timeline';
 
 const CandidateProfilePage: React.FC = () => {
   const { candidateId } = useParams();
   const [candidate, setCandidate] = useState<Candidate>();
+
+  const [assessments, setAssessments] = useState<EnrichedAssessmentResult[]>([]);
+  // We'll use empty arrays for these until you have APIs for them
+  const [jobApplications, setJobApplications] = useState<JobApplication[]>([]); 
+  const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
+  const [pendingAssessments, setPendingAssessments] = useState<CreatedAssesment[]>([]); // Assuming CreatedAssesment is the type returned
+
   const [activeTab, setActiveTab] = useState<TabType>('jobs');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  // useEffect(() => {
 
-    try {
-        // 3. Use the candidateId directly in your API call.
-    fetch(`/api/candidates/${candidateId}`)
-          .then(res => res.json())
-          .then(data => setCandidate(data));
+  //   try {
+  //       // 3. Use the candidateId directly in your API call.
+  //   fetch(`/api/candidates/${candidateId}`)
+  //         .then(res => res.json())
+  //         .then(data => setCandidate(data));
         
-    } catch (error) {
-         console.error('Error fetching candidate:', error);
-    }finally{
-        setLoading(false);
-    }
+  //   } catch (error) {
+  //        console.error('Error fetching candidate:', error);
+  //   }finally{
+  //       setLoading(false);
+  //   }
   
-  }, [candidateId]);
+  // }, [candidateId]);
+
+
+
+  // Replace your existing useEffect with this one
+
+useEffect(() => {
+  // Ensure candidateId exists before fetching
+  if (!candidateId) {
+    setLoading(false);
+    return;
+  }
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      // Fetch candidate details and their assessment results concurrently
+      const [
+        candidateResponse,
+        assessmentsResponse,
+        pendingAssessmentsResponse,
+        applications,
+        timelineResponse,] = await Promise.all([
+        fetch(`/api/candidates/${candidateId}`),
+        fetch(`/api/candidates/${candidateId}/results`),
+        fetch(`/api/assessments/assigned?candidateId=${candidateId}`),
+        fetchCandidateApplicationsAPI(parseInt(candidateId)),
+        fetch(`/api/candidates/${candidateId}/timeline`),
+      ]);
+
+      if (!candidateResponse.ok) {
+        // If the candidate isn't found, stop here
+        throw new Error('Candidate not found');
+      }
+
+      const candidateData = await candidateResponse.json();
+      const assessmentsData = await assessmentsResponse.json();
+      const pendingAssessmentsData = await pendingAssessmentsResponse.json();
+      const timelineData=await timelineResponse.json();
+
+      setCandidate(candidateData);
+      setAssessments(assessmentsData);
+      setPendingAssessments(pendingAssessmentsData);
+      setJobApplications(applications);
+      setTimelineEvents(timelineData);
+      // setTimelineEvents(timelineData);
+
+    } catch (error) {
+      console.error('Error fetching candidate data:', error);
+      // Set candidate to null or undefined so the "Not Found" message appears
+      setCandidate(undefined);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchData();
+}, [candidateId]);
   console.log('data: ',candidate);
 
   const tabs = [
-    { id: 'jobs', label: 'Job Applications', icon: Briefcase, count: mockJobApplications.length },
-    { id: 'assessments', label: 'Assessments', icon: FileText, count: mockAssessments.length },
-    { id: 'timeline', label: 'Timeline', icon: Clock, count: mockTimelineEvents.length }
+    { id: 'jobs', label: 'Job Applications', icon: Briefcase, count: jobApplications.length },
+    { id: 'assessments', label: 'Assessments', icon: FileText, count: pendingAssessments.length },
+    { id: 'timeline', label: 'Timeline', icon: Clock, count: timelineEvents.length }
   ];
 
   if (loading) {
@@ -71,11 +156,11 @@ const CandidateProfilePage: React.FC = () => {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'jobs':
-        return <JobApplicationsTab applications={mockJobApplications} />;
+        return <JobApplicationsTab applications={jobApplications} />;
       case 'assessments':
-        return <AssessmentsTab assessments={mockAssessments} />;
+        return <AssessmentsTab assessments={pendingAssessments} />;
       case 'timeline':
-        return <TimelineTab events={mockTimelineEvents} />;
+        return <TimelineTab events={timelineEvents} />;
       default:
         return null;
     }

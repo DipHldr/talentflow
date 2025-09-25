@@ -49,6 +49,7 @@ export interface AssignedAssessment {
   candidateId: number; // Points to a Candidate's 'id'
   assessmentId: number; // Points to a CreatedAssessment's 'id'
 }
+
 export interface CreatedAssesment {
   id?: number; // Primary Key
   title: string;

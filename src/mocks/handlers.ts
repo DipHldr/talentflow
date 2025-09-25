@@ -1,5 +1,5 @@
 import { http, HttpResponse } from "msw";
-import {getJobs,createJob,deleteJob,editJob,} from './controllers/jobControllers.ts';
+import {getJobs,createJob,deleteJob,editJob,getJobById} from './controllers/jobControllers.ts';
 import type {Job,PaginatedJobsResponse} from './types/jobs1.ts';
 import { getCandidates } from "./controllers/candidateControllers.ts";
 
@@ -20,7 +20,14 @@ import type {
    CreatedAssesment,
    AssessmentSubmission } from "./types/assesment";
 
+import {
+  updateApplicationStatus,
+  applyForJob,
+  getApplicationsByCandidate} from './controllers/JobApplicationControllers.ts';
+import type {JobApplication} from './types/jobs1.ts';
 
+import {getTimelineForCandidate} from './controllers/timelineControllers.ts';
+import type {TimelineEvent} from './types/timeline.ts'; 
 
 export const handlers = [
   //Handler for fetching jobs
@@ -36,6 +43,24 @@ export const handlers = [
 
     return HttpResponse.json<PaginatedJobsResponse>(response);
 
+  }),
+  //Handler for fetching a single job by its ID.
+  http.get("/api/jobs/:jobId", async ({ params }) => {
+    const { jobId } = params;
+
+    try {
+      // Call the controller to fetch the job data.
+      // Ensure jobId is a string, which it will be from params.
+      const job = await getJobById(String(jobId));
+
+      // If successful, return the job data with a 200 OK status.
+      return HttpResponse.json(job);
+
+    } catch (error: any) {
+      // The controller throws an error if not found, which we catch here.
+      // Return a 404 Not Found status with the error message.
+      return HttpResponse.json({ message: error.message }, { status: 404 });
+    }
   }),
   //Handler for fetching candidates
   http.get("/api/candidates", async ({ request }) => {
@@ -238,6 +263,117 @@ http.get("/api/candidates/:candidateId", async ({ params }) => {
       return HttpResponse.json(result, { status: 200 });
     } catch (error: any) {
       return HttpResponse.json({ message: error.message }, { status: 404 }); // 404 if not found
+    }
+  }),
+
+
+  /**
+   * Handler for a candidate to apply for a job.
+   * METHOD: POST
+   * ENDPOINT: /api/applications
+   * BODY: { "candidateId": number, "jobId": string }
+   */
+  http.post("/api/applications", async ({ request }) => {
+    try {
+      const { candidateId, jobId } = await request.json() as { candidateId: number; jobId: string };
+
+      if (!candidateId || !jobId) {
+        return HttpResponse.json({ message: "candidateId and jobId are required." }, { status: 400 });
+      }
+
+      const newApplicationId = await applyForJob(candidateId, jobId);
+
+      // Return the ID of the new application with a 201 Created status
+      return HttpResponse.json({ applicationId: newApplicationId, message: "Application successful." }, { status: 201 });
+
+    } catch (error: any) {
+      // The controller throws an error if the application already exists.
+      // A 409 Conflict status is appropriate here.
+      if (error.message.includes("already applied")) {
+        return HttpResponse.json({ message: error.message }, { status: 409 });
+      }
+      // For any other unexpected errors
+      return HttpResponse.json({ message: "Failed to submit application." }, { status: 500 });
+    }
+  }),
+
+  /**
+   * Handler to fetch all applications for a specific candidate.
+   * METHOD: GET
+   * ENDPOINT: /api/candidates/:candidateId/applications
+   */
+  http.get("/api/candidates/:candidateId/applications", async ({ params }) => {
+    try {
+      const { candidateId } = params;
+
+      // Validate and parse the candidateId from the URL parameter
+      const candidateIdNum = Number(candidateId);
+      if (isNaN(candidateIdNum)) {
+        return HttpResponse.json({ message: "Invalid candidate ID." }, { status: 400 });
+      }
+
+      const applications = await getApplicationsByCandidate(candidateIdNum);
+
+      return HttpResponse.json<JobApplication[]>(applications);
+
+    } catch (error: any) {
+      return HttpResponse.json({ message: "Failed to fetch applications." }, { status: 500 });
+    }
+  }),
+
+  /**
+   * Handler for an HR user to update an application's status.
+   * METHOD: PATCH
+   * ENDPOINT: /api/applications/:applicationId
+   * BODY: { "status": "Interview" | "Rejected" | ... }
+   */
+  http.patch("/api/applications/:applicationId", async ({ params, request }) => {
+    try {
+      const { applicationId } = params;
+      const { status } = await request.json() as { status: JobApplication['status'] };
+
+      // Validate and parse the applicationId from the URL parameter
+      const applicationIdNum = Number(applicationId);
+      if (isNaN(applicationIdNum)) {
+        return HttpResponse.json({ message: "Invalid application ID." }, { status: 400 });
+      }
+
+      if (!status) {
+         return HttpResponse.json({ message: "New status is required." }, { status: 400 });
+      }
+
+      await updateApplicationStatus(applicationIdNum, status);
+
+      return HttpResponse.json({ message: `Application ${applicationIdNum} status updated to ${status}.` });
+
+    } catch (error: any) {
+      // The controller throws an error if the application ID doesn't exist.
+      if (error.message.includes("not found")) {
+        return HttpResponse.json({ message: error.message }, { status: 404 });
+      }
+      // For any other unexpected errors
+      return HttpResponse.json({ message: "Failed to update application status." }, { status: 500 });
+    }
+  }),
+
+    /**
+   * Handler to fetch the timeline for a specific candidate.
+   * METHOD: GET
+   * ENDPOINT: /api/candidates/:candidateId/timeline
+   */
+  http.get("/api/candidates/:candidateId/timeline", async ({ params }) => {
+    try {
+      const { candidateId } = params;
+
+      // Call the controller with the candidate's ID (converted to a number)
+      const timelineEvents = await getTimelineForCandidate(Number(candidateId));
+
+      // Return the array of events as a JSON response
+      return HttpResponse.json<TimelineEvent[]>(timelineEvents);
+      
+    } catch (error: any) {
+      // If the controller throws an error, return a 500 server error status
+      return HttpResponse.json({ message: error.message }, { status: 500 });
     }
   }),
 

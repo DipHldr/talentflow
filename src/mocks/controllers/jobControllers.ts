@@ -116,6 +116,26 @@ export async function getJobs({
 }
 
 
+
+/**
+ * Fetches a single job by its unique ID.
+ * @param jobId - The ID of the job to retrieve.
+ * @returns A promise that resolves to the Job object.
+ * @throws Will throw an error if the job with the specified ID is not found.
+ */
+export const getJobById = async (jobId: string): Promise<Job> => {
+  // Dexie's .get() method is highly optimized for fetching by primary key.
+  const job = await db.jobs.get(jobId);
+
+  if (!job) {
+    // If the job is not found, throw an error that can be caught by the handler.
+    throw new Error(`Job with ID '${jobId}' not found.`);
+  }
+
+  return job;
+};
+
+
 /**
  * Updates an existing job in the database.
  * @param {string} jobId - The ID of the job to update.

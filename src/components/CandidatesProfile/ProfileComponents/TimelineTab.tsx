@@ -1,6 +1,6 @@
 import React from 'react';
 import { Calendar, FileText, MessageSquare, UserCheck, Clock } from 'lucide-react';
-import type { TimelineEvent } from '../mockType';
+import type { TimelineEvent } from '../../../mocks/types/timeline.ts';
 
 interface TimelineTabProps {
   events: TimelineEvent[];
@@ -64,17 +64,8 @@ const TimelineTab: React.FC<TimelineTabProps> = ({ events }) => {
                 </div>
 
                 <p className="text-gray-600 mb-3">
-                  {event.description}
+                  {event.createdBy}
                 </p>
-
-                {event.status && (
-                  <div className="flex items-center">
-                    <span className="text-sm text-gray-500 mr-2">Status:</span>
-                    <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                      {event.status}
-                    </span>
-                  </div>
-                )}
               </div>
             </div>
           ))}

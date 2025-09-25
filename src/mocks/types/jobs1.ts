@@ -51,3 +51,12 @@ export interface CreateJobData {
   deadline?: string;
   department?: string;
 }
+
+
+export interface JobApplication {
+  id?: number; // Auto-incrementing primary key
+  candidateId: number;
+  jobId: string; // Corresponds to the Job's 'id'
+  appliedDate: Date;
+  status: 'Applied' | 'Screening' | 'Interview' | 'Offer' | 'Rejected' | 'Hired';
+}
