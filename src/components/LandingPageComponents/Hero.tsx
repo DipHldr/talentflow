@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { ArrowRight, Search, Users, TrendingUp } from 'lucide-react';
+// import { Input } from '@/components/ui/input';
+import { ArrowRight, Search, TrendingUp } from 'lucide-react';
 
 export function Hero() {
   return (
