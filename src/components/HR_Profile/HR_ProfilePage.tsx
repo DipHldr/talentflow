@@ -6,6 +6,8 @@ import { CandidatesTab } from './components/CandidatesTab';
 import { AnalyticsTab } from './components/AnalyticsTab';
 import { ResultsTab } from './components/ResultsTab';
 import { PostedJobs } from './components/PostedJobs';
+import { ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
 const HRProfilePage=()=> {
   const [activeTab, setActiveTab] = useState('assessments');
 
@@ -37,7 +39,13 @@ const HRProfilePage=()=> {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
+       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Link to='/' className='mb-[16px] inline-block text-gray-600 hover:text-gray-900  '>
+        <button className='flex gap-4'>
+        <ArrowLeft/>Back
+        </button>
+        </Link>
         <ProfileHeader hrData={hrData} />
         <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
         <div className="transition-all duration-300 ease-in-out">

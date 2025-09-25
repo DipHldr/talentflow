@@ -18,7 +18,7 @@ function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="jobs" element={<JobsPage />} />
       <Route path="playground" element={<Playground />} />
-      <Route path="playground2" element={<Playground2 />} />
+      {/* <Route path="playground2" element={<Playground2 />} /> */}
       <Route path="profile" element={<CandidateProfile />} />
       {/* <Route path="profilecard" element={<CandidateProfileCard />} /> */}
       <Route path="kanban" element={<CandidatePage />} />

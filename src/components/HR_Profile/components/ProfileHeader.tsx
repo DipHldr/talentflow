@@ -43,10 +43,6 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ hrData }) => {
           </div>
         </div>
         
-        <div className="text-center">
-          <div className="text-2xl font-bold text-blue-600">24</div>
-          <div className="text-sm text-gray-500">Active Assessments</div>
-        </div>
       </div>
     </div>
   );

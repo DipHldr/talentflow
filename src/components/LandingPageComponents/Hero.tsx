@@ -38,38 +38,17 @@ export function Hero() {
             </p>
           </div>
 
-          {/* Search Bar */}
-          <div className="bg-blue-white rounded-2xl shadow-xl border p-2 w-full max-w-lg">
-            <div className="flex items-center space-x-3">
-              <div className="flex-1 flex items-center space-x-3 pl-4">
-                <Search className="h-5 w-5 text-slate-400" />
-                <Input 
-                  type="text" 
-                  placeholder="Job title, keywords, or company"
-                  className="flex-1 border-0 outline-none ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-slate-700 placeholder-slate-400"
-                />
-              </div>
-              <Button className="bg-slate-900 hover:bg-slate-800 text-white px-6 rounded-xl">
-                Search
-              </Button>
-            </div>
-          </div>
+
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4">
             <Button asChild size="lg" className="bg-slate-900 hover:bg-slate-800 text-white px-8 rounded-xl shadow-lg hover:shadow-xl transition-all">
-              <Link to="/jobs">
+              <Link to="/hrprofile">
                 <Search className="h-5 w-5 mr-2" />
-                Browse Jobs
+                Getting Started
                 <ArrowRight className="h-5 w-5 ml-2" />
               </Link>
             </Button>
-            <Link to='hrprofile'>
-            <Button size="lg" variant="outline" className="border-slate-300 text-slate-700 hover:bg-slate-50 px-8 rounded-xl">
-              <Users className="h-5 w-5 mr-2" />
-              For Employers
-            </Button>
-            </Link>
           </div>
 
           {/* Stats */}

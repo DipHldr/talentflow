@@ -48,3 +48,13 @@ export async function getCandidates({
   };
 }
 
+
+export const updateCandidateStage = async (candidateId: number, newStage: string) => {
+  const updatedCount = await db.candidates.update(candidateId, { stage: newStage });
+
+  if (updatedCount === 0) {
+    throw new Error(`Candidate with ID ${candidateId} not found.`);
+  }
+
+  return updatedCount;
+};

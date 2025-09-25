@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Mail, GraduationCap, Briefcase, User, Trash2 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
 import {
   DndContext,
   pointerWithin,
@@ -21,7 +22,23 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { PaginatedCandidatesResponse, Candidate } from '../../mocks/types/candidates';
+import { ArrowBigLeft,ArrowLeft } from 'lucide-react';
 
+
+const updateCandidateStageAPI = async (candidateId: number, newStage: string) => {
+  const response = await fetch(`/api/candidates/${candidateId}/stage`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ stage: newStage }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || "Failed to update candidate's stage.");
+  }
+};
 // --- UI Components (Self-Contained) ---
 const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement>> = ({ className, children, ...props }) => (
   <button className={`inline-flex items-center justify-center rounded-md text-sm font-medium ${className}`} {...props}>
@@ -116,7 +133,7 @@ const CandidateCard = ({ candidate, onDelete }: { candidate: Candidate; onDelete
 const DroppableColumn = ({ id, title, candidates, onDelete }: { id: string; title: React.ReactNode; candidates: Candidate[]; onDelete: (id: number) => void; }) => {
   const { setNodeRef, isOver } = useDroppable({ id });
   return (
-    <div ref={setNodeRef} className={`rounded-lg p-3 min-h-[500px] transition-colors duration-200 flex flex-col ${isOver ? 'bg-blue-100 border-blue-400 border-2' : 'bg-slate-100 border-slate-200 border-2 border-dashed'}`}>
+    <div ref={setNodeRef} className={`w-[320px] flex-shrink-0 rounded-lg p-3 min-h-[500px] transition-colors duration-200 flex flex-col ${isOver ? 'bg-blue-100 border-blue-400 border-2' : 'bg-slate-100 border-slate-200 border-2 border-dashed'}`}>
       {title}
       <div className="mt-3 space-y-4 flex-grow overflow-y-auto pr-2">
         <SortableContext items={candidates.map((c) => c.id.toString())} strategy={verticalListSortingStrategy}>
@@ -131,7 +148,9 @@ const DroppableColumn = ({ id, title, candidates, onDelete }: { id: string; titl
 
 type Columns = {
   applied: Candidate[];
+  assessment: Candidate[];
   interview: Candidate[];
+  offer: Candidate[];
   accepted: Candidate[];
   rejected: Candidate[];
 };
@@ -160,74 +179,153 @@ const CandidatePage = () => {
   const [pageSize, setPageSize] = useState(10); // Fetch a larger batch of candidates
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
+    const queryClient = useQueryClient();
+
   const { data, isLoading, isError, error } = useQuery<PaginatedCandidatesResponse, Error>({
     queryKey: ['candidates', debouncedSearchTerm, pageNumber, pageSize],
     queryFn: () => fetchCandidates(debouncedSearchTerm, String(pageNumber), String(pageSize)),
     staleTime: 5 * 60 * 1000,
   });
 
-  const [columns, setColumns] = useState<Columns>({ applied: [], interview: [], accepted: [], rejected: [] });
+    const { mutate: updateCandidateStage } = useMutation({
+    mutationFn: ({ candidateId, newStage }: { candidateId: number; newStage: string; }) => 
+      updateCandidateStageAPI(candidateId, newStage),
+    
+    onSuccess: () => {
+      // When the mutation is successful, invalidate the 'candidates' query.
+      // This tells React Query that the data is stale and needs to be refetched.
+      console.log("Stage updated successfully, invalidating candidates query...");
+      queryClient.invalidateQueries({ queryKey: ['candidates'] });
+    },
+    onError: (error) => {
+      console.error('Failed to update candidate stage:', error);
+      // Here you could add logic to show an error message to the user
+    }
+  });
+
+  const [columns, setColumns] = useState<Columns>({
+    applied: [],
+    assessment:[],
+    interview: [],
+    offer: [],
+    accepted: [],
+    rejected: [] });
+
   const [activeId, setActiveId] = useState<string | null>(null);
   const [draggedCandidate, setDraggedCandidate] = useState<Candidate | null>(null);
+  const [displayedColumns, setDisplayedColumns] = useState<Columns>({
+  applied: [], assessment: [], interview: [], offer: [], accepted: [], rejected: []
+});
 
-//   useEffect(() => {
-//     if (data?.data) {
-//       setColumns(prevColumns => {
+// 1
+// useEffect(() => {
+//   if (data?.data) {
+//     setColumns(prevColumns => {
+//       // 1. First, we preserve the columns that you have manually organized.
+//       // const preservedColumns = {
+//       //   interview: prevColumns.interview,
+//       //   accepted: prevColumns.accepted,
+//       //   rejected: prevColumns.rejected,
+//       // };
+//       const { applied, ...preservedColumns } = prevColumns;
 
-//         const allManagedCandidates = new Map(Object.values(prevColumns).flat().map(c => [c.id, c]));
-//         data.data.forEach(candidateFromApi => {
-//           if (allManagedCandidates.has(candidateFromApi.id)) {
-//             const existing = allManagedCandidates.get(candidateFromApi.id)!;
-//             Object.assign(existing, { ...candidateFromApi, stage: existing.stage });
-//           } else {
-//             allManagedCandidates.set(candidateFromApi.id, candidateFromApi);
-//           }
-//         });
-//         const newColumns: Columns = { applied: [], interview: [], accepted: [], rejected: [] };
-//         allManagedCandidates.forEach(candidate => {
-//           const stage = candidate.stage as keyof Columns;
-//           if (newColumns[stage]) {
-//             newColumns[stage].push(candidate);
-//           } else {
-//             newColumns.applied.push(candidate);
-//           }
-//         });
-//         return newColumns;
-//       });
+
+//       // 2. We create a list of all candidate IDs that are already in those preserved columns.
+//       const preservedIds = new Set(
+//         Object.values(preservedColumns).flat().map(c => c.id)
+//       );
+
+//       // 3. The "Applied" list is now built ONLY from the new API data,
+//       //    but we filter out any candidates who are already in one of your organized columns.
+//       const newAppliedCandidates = data.data.filter(
+//         candidateFromApi => !preservedIds.has(candidateFromApi.id)
+//       );
+
+//       // 4. Finally, we combine your preserved columns with the new, correctly filtered "Applied" list.
+//       return {
+//         applied: newAppliedCandidates,
+//         ...preservedColumns,
+//       };
+//     });
+//   }
+// }, [data]);
+// 2
+// useEffect(() => {
+//   if (data?.data) {
+
+    
+//     // 1. Start with a fresh, empty set of columns on every data change.
+//     const newColumns: Columns = {
+//       applied: [],
+//       assessment: [],
+//       interview: [],
+//       offer: [],
+//       accepted: [],
+//       rejected: [],
+//     };
+
+//     // 2. Distribute the fresh candidates from the API into the correct columns.
+//     for (const candidate of data.data) {
+//       const stage = candidate.stage as keyof Columns;
+//       if (stage && newColumns[stage]) {
+//         newColumns[stage].push(candidate);
+//       } else {
+//         // Default to 'applied' if stage is missing or invalid
+//         newColumns.applied.push(candidate);
+//       }
 //     }
-//   }, [data]);
 
-// ADD THIS ENTIRE BLOCK ▼
+//     // 3. Set the state. This ensures the UI always mirrors the server data.
+//     setColumns(newColumns);
+//   }
+// }, [data]);
 
+
+// EFFECT 1: Populates the master list from the API
 useEffect(() => {
   if (data?.data) {
-    setColumns(prevColumns => {
-      // 1. First, we preserve the columns that you have manually organized.
-      const preservedColumns = {
-        interview: prevColumns.interview,
-        accepted: prevColumns.accepted,
-        rejected: prevColumns.rejected,
-      };
-
-      // 2. We create a list of all candidate IDs that are already in those preserved columns.
-      const preservedIds = new Set(
-        Object.values(preservedColumns).flat().map(c => c.id)
-      );
-
-      // 3. The "Applied" list is now built ONLY from the new API data,
-      //    but we filter out any candidates who are already in one of your organized columns.
-      const newAppliedCandidates = data.data.filter(
-        candidateFromApi => !preservedIds.has(candidateFromApi.id)
-      );
-
-      // 4. Finally, we combine your preserved columns with the new, correctly filtered "Applied" list.
-      return {
-        applied: newAppliedCandidates,
-        ...preservedColumns,
-      };
-    });
+    const newSourceColumns: Columns = {
+      applied: [], assessment: [], interview: [], offer: [], accepted: [], rejected: [],
+    };
+    for (const candidate of data.data) {
+      const stage = candidate.stage as keyof Columns;
+      if (stage && newSourceColumns[stage]) {
+        newSourceColumns[stage].push(candidate);
+      } else {
+        newSourceColumns.applied.push(candidate);
+      }
+    }
+    setColumns(newSourceColumns);
   }
 }, [data]);
+
+// EFFECT 2: Filters the master list to create the displayed list
+useEffect(() => {
+  const term = debouncedSearchTerm.toLowerCase();
+
+  // If there's no search term, show everything from the master list
+  if (!term) {
+    setDisplayedColumns(columns);
+    return;
+  }
+
+  const newDisplayedColumns: Columns = {
+    applied: [], assessment: [], interview: [], offer: [], accepted: [], rejected: [],
+  };
+
+  // Loop through the master list and filter each column
+  for (const key in columns) {
+    const colKey = key as keyof Columns;
+    newDisplayedColumns[colKey] = columns[colKey].filter(candidate =>
+      candidate.name.toLowerCase().includes(term) ||
+      candidate.email.toLowerCase().includes(term) ||
+      (candidate.portfolio_skills || []).some(skill => skill.toLowerCase().includes(term))
+    );
+  }
+  setDisplayedColumns(newDisplayedColumns);
+}, [columns, debouncedSearchTerm]);
+
+
 
 
   const sensors = useSensors(
@@ -248,24 +346,71 @@ useEffect(() => {
     setDraggedCandidate(findCandidate(active.id as string) || null);
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveId(null);
-    setDraggedCandidate(null);
-    if (!over) return;
-    const sourceColumn = findColumn(active.id as string);
-    const destColumn = findColumn(over.id as string);
-    if (!sourceColumn || !destColumn) return;
-    const activeIdNum = parseInt(active.id as string, 10);
-    const overIdNum = parseInt(over.id as string, 10);
-    setColumns(prev => {
-      if (sourceColumn === destColumn) {
+  // const handleDragEnd = (event: DragEndEvent) => {
+  //   const { active, over } = event;
+  //   setActiveId(null);
+  //   setDraggedCandidate(null);
+  //   if (!over) return;
+  //   const sourceColumn = findColumn(active.id as string);
+  //   const destColumn = findColumn(over.id as string);
+  //   if (!sourceColumn || !destColumn) return;
+  //   const activeIdNum = parseInt(active.id as string, 10);
+  //   const overIdNum = parseInt(over.id as string, 10);
+  //   setColumns(prev => {
+  //     if (sourceColumn === destColumn) {
+  //       if (activeIdNum === overIdNum) return prev;
+  //       const oldIndex = prev[sourceColumn].findIndex(c => c.id === activeIdNum);
+  //       const newIndex = prev[sourceColumn].findIndex(c => c.id === overIdNum);
+  //       if (oldIndex === -1 || newIndex === -1) return prev;
+  //       return { ...prev, [sourceColumn]: arrayMove(prev[sourceColumn], oldIndex, newIndex) };
+  //     } else {
+  //       const sourceItems = [...prev[sourceColumn]];
+  //       const destItems = [...prev[destColumn]];
+  //       const activeIndex = sourceItems.findIndex(c => c.id === activeIdNum);
+  //       if (activeIndex === -1) return prev;
+  //       const [movedItem] = sourceItems.splice(activeIndex, 1);
+  //       movedItem.stage = destColumn;
+  //       const overIndex = destItems.findIndex(c => c.id === overIdNum);
+  //       if (overIndex !== -1) destItems.splice(overIndex, 0, movedItem);
+  //       else destItems.push(movedItem);
+
+  //       //updating stage for persistence of stages in kanban board
+  //       // updateCandidateStageAPI(movedItem.id, destColumn)
+  //       // .then(() => {
+  //       //   console.log(`Successfully updated candidate ${movedItem.id} to stage: ${destColumn}`);
+  //       // })
+  //       // .catch(error => {
+  //       //   console.error('Failed to update candidate stage:', error);
+  //       // });
+  //       updateCandidateStage({ candidateId: movedItem.id, newStage: destColumn });
+
+  //       return { ...prev, [sourceColumn]: sourceItems, [destColumn]: destItems };
+  //     }
+  //   });
+  // };
+
+
+const handleDragEnd = (event: DragEndEvent) => {
+  const { active, over } = event;
+  setActiveId(null);
+  setDraggedCandidate(null);
+  if (!over) return;
+  const sourceColumn = findColumn(active.id as string);
+  const destColumn = findColumn(over.id as string);
+  if (!sourceColumn || !destColumn) return;
+  const activeIdNum = parseInt(active.id as string, 10);
+  const overIdNum = parseInt(over.id as string, 10);
+  
+  // CRITICAL CHANGE: Update the master list
+  setColumns(prev => {
+    // ... the rest of your drag-and-drop logic is correct and stays the same ...
+    if (sourceColumn === destColumn) {
         if (activeIdNum === overIdNum) return prev;
         const oldIndex = prev[sourceColumn].findIndex(c => c.id === activeIdNum);
         const newIndex = prev[sourceColumn].findIndex(c => c.id === overIdNum);
         if (oldIndex === -1 || newIndex === -1) return prev;
         return { ...prev, [sourceColumn]: arrayMove(prev[sourceColumn], oldIndex, newIndex) };
-      } else {
+    } else {
         const sourceItems = [...prev[sourceColumn]];
         const destItems = [...prev[destColumn]];
         const activeIndex = sourceItems.findIndex(c => c.id === activeIdNum);
@@ -275,33 +420,39 @@ useEffect(() => {
         const overIndex = destItems.findIndex(c => c.id === overIdNum);
         if (overIndex !== -1) destItems.splice(overIndex, 0, movedItem);
         else destItems.push(movedItem);
+        updateCandidateStage({ candidateId: movedItem.id, newStage: destColumn });
         return { ...prev, [sourceColumn]: sourceItems, [destColumn]: destItems };
-      }
-    });
-  };
+    }
+  });
+};  
 
-  const handleDelete = (id: number) => {
-    setColumns(prev => {
-      const newColumns = { ...prev };
-      Object.keys(newColumns).forEach(key => {
-        newColumns[key as keyof Columns] = newColumns[key as keyof Columns].filter(c => c.id !== id);
-      });
-      return newColumns;
-    });
-  };
+ 
+  
+const handleDelete = (id: number) => {
+  // Call the existing mutation to move the candidate back to the 'applied' stage.
+  updateCandidateStage({ candidateId: id, newStage: 'applied' });
+};
 
   const columnTitles: Record<keyof Columns, React.ReactNode> = {
     applied: (<div className='bg-gradient-to-tr from-[#2f3743] via-[#293e69] to-[#031534] rounded-md p-3 flex justify-center items-center mb-2'><p className="bg-gradient-to-r from-[#e7f2f0] to-[#bfc8d5] bg-clip-text text-lg font-bold text-transparent">Applied ({columns.applied.length})</p></div>),
+    assessment: (<div className='bg-gradient-to-br from-[#6d28d9] via-[#9333ea] to-[#a855f7] rounded-md p-3 flex justify-center items-center mb-2'><p className="text-white text-lg font-bold">Assessment ({displayedColumns.assessment.length})</p></div>),
 
-    interview: (<div className='bg-gradient-to-br from-[#1e40af] via-[#3b82f6] to-[#1d4ed8] rounded-md p-3 flex justify-center items-center mb-2'><p className="text-white text-lg font-bold">Interview ({columns.interview.length})</p></div>),
+    interview: (<div className='bg-gradient-to-br from-[#1e40af] via-[#3b82f6] to-[#1d4ed8] rounded-md p-3 flex justify-center items-center mb-2'><p className="text-white text-lg font-bold">Interview ({displayedColumns.interview.length})</p></div>),
+    offer: (<div className='bg-gradient-to-br from-[#c2410c] via-[#f97316] to-[#fb923c] rounded-md p-3 flex justify-center items-center mb-2'><p className="text-white text-lg font-bold">Offer ({displayedColumns.offer.length})</p></div>),
 
-    accepted: (<div className='bg-gradient-to-br from-[#166534] via-[#22c55e] to-[#15803d] rounded-md p-3 flex justify-center items-center mb-2'><p className="text-white text-lg font-bold">Accepted ({columns.accepted.length})</p></div>),
+    accepted: (<div className='bg-gradient-to-br from-[#166534] via-[#22c55e] to-[#15803d] rounded-md p-3 flex justify-center items-center mb-2'><p className="text-white text-lg font-bold">Accepted ({displayedColumns.accepted.length})</p></div>),
 
-    rejected: (<div className='bg-gradient-to-tl from-[#991b1b] via-[#ef4444] to-[#b91c1c] rounded-md p-3 flex justify-center items-center mb-2'><p className="text-white text-lg font-bold">Rejected ({columns.rejected.length})</p></div>)
+    rejected: (<div className='bg-gradient-to-tl from-[#991b1b] via-[#ef4444] to-[#b91c1c] rounded-md p-3 flex justify-center items-center mb-2'><p className="text-white text-lg font-bold">Rejected ({displayedColumns.rejected.length})</p></div>)
   };
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
+      <Link to='/hrprofile'>
+      <button className='flex gap-4'>
+        <ArrowLeft/>
+        Back
+      </button>
+      </Link>
       <div className="max-w-screen-2xl mx-auto">
 
         <div className="bg-blue-white rounded-2xl shadow-xl border p-2 w-full mt-4">
@@ -327,7 +478,7 @@ useEffect(() => {
           {isLoading && <div className="text-center p-8"><div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div><p className="text-slate-500 mt-2">Loading...</p></div>}
           {!isLoading && !isError && (
              <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="flex overflow-x-auto gap-6 pb-4">
                 {(Object.keys(columns) as Array<keyof Columns>).map((colId) => (
                   <DroppableColumn key={colId} id={colId} title={columnTitles[colId]} candidates={columns[colId]} onDelete={handleDelete} />
                 ))}

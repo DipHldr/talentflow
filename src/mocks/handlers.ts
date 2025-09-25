@@ -1,7 +1,7 @@
 import { http, HttpResponse } from "msw";
 import {getJobs,createJob,deleteJob,editJob,getJobById} from './controllers/jobControllers.ts';
 import type {Job,PaginatedJobsResponse} from './types/jobs1.ts';
-import { getCandidates } from "./controllers/candidateControllers.ts";
+import { getCandidates,updateCandidateStage } from "./controllers/candidateControllers.ts";
 
 import { 
   createAssessment,
@@ -377,4 +377,21 @@ http.get("/api/candidates/:candidateId", async ({ params }) => {
     }
   }),
 
+  http.patch("/api/candidates/:candidateId/stage", async ({ params, request }) => {
+    try {
+      const { candidateId } = params;
+      const { stage } = await request.json() as { stage: string };
+
+      if (!stage) {
+        return HttpResponse.json({ message: "Stage is required." }, { status: 400 });
+      }
+
+      await updateCandidateStage(Number(candidateId), stage);
+
+      return HttpResponse.json({ message: `Candidate stage updated successfully.` });
+
+    } catch (error: any) {
+      return HttpResponse.json({ message: error.message }, { status: 404 });
+    }
+  }),
 ];
